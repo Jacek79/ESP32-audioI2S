@@ -1160,7 +1160,14 @@ exit:
     return false;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-static const EntityMap entities[] = {
+void Audio::htmlToUTF8(char* str) { // convert HTML to UTF-8
+
+    typedef struct { // --- EntityMap Definition ---
+        const char *name;
+        uint32_t codepoint;
+    } EntityMap;
+
+    static const EntityMap entities[] = {
         {"amp",   0x0026}, // &
         {"lt",    0x003C}, // <
         {"gt",    0x003E}, // >
