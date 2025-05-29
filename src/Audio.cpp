@@ -1160,14 +1160,7 @@ exit:
     return false;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void Audio::htmlToUTF8(char* str) { // convert HTML to UTF-8
-
-    typedef struct { // --- EntityMap Definition ---
-        const char *name;
-        uint32_t codepoint;
-    } EntityMap;
-
-    static const EntityMap entities[] = {
+static const EntityMap entities[] = {
         {"amp",   0x0026}, // &
         {"lt",    0x003C}, // <
         {"gt",    0x003E}, // >
@@ -1182,8 +1175,28 @@ void Audio::htmlToUTF8(char* str) { // convert HTML to UTF-8
         {"ndash", 0x2013}, // –
         {"mdash", 0x2014}, // —
         {"sect",  0x00A7}, // §
-        {"para",  0x00B6}  // ¶
-    };
+        {"para",  0x00B6},  // ¶
+        {"agrave", 0x00E0}, // à
+        {"acirc",  0x00E2}, // â
+        {"auml",   0x00E4}, // ä
+        {"ccedil", 0x00E7}, // ç
+        {"eacute", 0x00E9}, // é
+        {"egrave", 0x00E8}, // è
+        {"ecirc",  0x00EA}, // ê
+        {"euml",   0x00EB}, // ë
+        {"icirc",  0x00EE}, // î
+        {"iuml",   0x00EF}, // ï
+        {"ocirc",  0x00F4}, // ô
+        {"ouml",   0x00F6}, // ö
+        {"ugrave", 0x00F9}, // ù
+        {"ucirc",  0x00FB}, // û
+        {"uuml",   0x00FC}, // ü
+        {"yuml",   0x00FF}, // ÿ
+        {"szlig",  0x00DF}, // ß
+        {"Auml",   0x00C4}, // Ä
+        {"Ouml",   0x00D6}, // Ö
+        {"Uuml",   0x00DC}  // Ü
+        };
 
     // --- EntityMap Lookup ---
     auto find_entity = [&](const char *p, uint32_t *codepoint, int *entity_len) {
@@ -5413,11 +5426,11 @@ void Audio::IIR_calculateCoefficients(int8_t G0, int8_t G1, int8_t G2) { // Infi
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     if(G0 < -40) G0 = -40; // -40dB -> Vin*0.01
-    if(G0 > 6) G0 = 6;     // +6dB -> Vin*2
+    if(G0 > 12) G0 = 12;     // +6dB -> Vin*2
     if(G1 < -40) G1 = -40;
-    if(G1 > 6) G1 = 6;
+    if(G1 > 12) G1 = 12;
     if(G2 < -40) G2 = -40;
-    if(G2 > 6) G2 = 6;
+    if(G2 > 12) G2 = 12;
 
     const float FcLS = 500;    // Frequency LowShelf[Hz]
     const float FcPKEQ = 3000; // Frequency PeakEQ[Hz]
@@ -5899,7 +5912,7 @@ uint16_t Audio::readMetadata(uint16_t maxBytes, bool first) {
         return res;
     } // metalen is 0
     if(metalen < m_chbufSize) {
-        uint16_t a = _client->readBytes(&m_chbuf[pos_ml], min((uint16_t)(metalen - pos_ml), (uint16_t)(maxBytes)));
+        uint16_t a = _client->readBytes(&m_chbuf[pos_ml], min((uint16_t)(metalen - pos_ml), (uint16_t)(maxBytes - 1)));
         res += a;
         pos_ml += a;
     }
