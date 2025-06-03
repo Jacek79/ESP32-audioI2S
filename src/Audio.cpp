@@ -3,8 +3,8 @@
     audio.cpp
 
     Created on: Oct 28.2018                                                                                                  */char audioI2SVers[] ="\
-    Version 3.3.0a                                                                                                                                ";
-/*  Updated on: May 27.2025
+    Version 3.3.0d                                                                                                                                ";
+/*  Updated on: Jun 02.2025
 
     Author: Wolle (schreibfaul1)
     Audio library for ESP32, ESP32-S3 or ESP32-P4
@@ -3337,6 +3337,7 @@ void Audio::processLocalFile() {
     bytesAddedToBuffer = audiofile.read(InBuff.getWritePtr(), availableBytes);
     if(bytesAddedToBuffer > 0) {byteCounter += bytesAddedToBuffer; InBuff.bytesWritten(bytesAddedToBuffer);}
     if(m_audioDataSize && byteCounter >= m_audioDataSize){if(!m_f_allDataReceived) m_f_allDataReceived = true;}
+    if(!m_audioDataSize && byteCounter == m_fileSize){if(!m_f_allDataReceived) m_f_allDataReceived = true;}
     // log_e("byteCounter %u >= m_audioDataSize %u, m_f_allDataReceived % i", byteCounter, m_audioDataSize, m_f_allDataReceived);
 
     if(newFilePos) { // we have a new file position
@@ -3370,7 +3371,7 @@ void Audio::processLocalFile() {
                 m_f_running = false;
                 goto exit;
             }
-            if(InBuff.bufferFilled() > maxFrameSize || (InBuff.bufferFilled() == m_fileSize)) { // at least one complete frame or the file is smaller
+            if(InBuff.bufferFilled() > maxFrameSize || (InBuff.bufferFilled() == m_fileSize) || m_f_allDataReceived) { // at least one complete frame or the file is smaller
                 InBuff.bytesWasRead(readAudioHeader(InBuff.getMaxAvailableBytes()));
             }
             if(m_controlCounter == 100){
@@ -4752,6 +4753,22 @@ int Audio::sendBytes(uint8_t* data, size_t len) {
                 MP3Decoder_ClearBuffer();
                 return findNextSync(data, bytesLeft); // skip last mp3 frame and search for next syncword
             }
+        }
+        //  According to the specification, the channel configuration is transferred in the first ADTS header and no longer changes in the entire
+        //  stream. Some streams send short mono blocks in a stereo stream. e.g. http://mp3.ffh.de/ffhchannels/soundtrack.aac
+        //  This triggers error -21 because the faad2 decoder cannot switch automatically.
+        if(m_codec == CODEC_AAC && m_decodeError == -21){ // mono <-> stereo change
+            static uint8_t channels = 0;
+            if ((data[0] == 0xFF) || ((data[1] & 0xF0) == 0xF0)){
+                int channel_config = ((data[2] & 0x01) << 2) | ((data[3] & 0xC0) >> 6);
+                if(channel_config != channels) {
+                    channels = channel_config;
+                    AUDIO_INFO("AAC channel config changed to %d", channels);
+                }
+            }
+            AACDecoder_FreeBuffers();
+            AACDecoder_AllocateBuffers();
+            return 0;
         }
 
         printDecodeError(m_decodeError);
